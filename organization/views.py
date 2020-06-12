@@ -1,13 +1,14 @@
-from django.contrib.auth.models import User
+from django.contrib import auth
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.authtoken.views import ObtainAuthToken
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import IsAdminUser
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from .models import Organization
+
 from .models import CustomToken
+from .models import Organization
 from .models import TodoItem
 from .serializers import OrganizationSerializer
 from .serializers import ToDoItemSerializer
@@ -127,36 +128,31 @@ class CustomAuthTokenView(ObtainAuthToken):
     def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
-        organization_pk = int(kwargs.get('pk', None))
-        if organization_pk is None:
+        organization = get_object_or_404(Organization.objects.all(), pk=int(kwargs.get('pk', None)))
+        organization_users = [user.email for user in organization.users.all()]
+        passed_user_email = serializer.validated_data['user']
+        user = get_object_or_404(auth.get_user_model().objects.all(), email=passed_user_email)
+
+        if not user.is_active:
             return Response({
                 "status": "Failure",
-                "detail": "No organization PK"
-            }, status=status.HTTP_400_BAD_REQUEST)
+                "detail": "User deleted"
+            }, status=status.HTTP_406_NOT_ACCEPTABLE)
+
+        if passed_user_email.email in organization_users:
+            try:
+                token = CustomToken.objects.get(user=passed_user_email)
+            except CustomToken.DoesNotExist:
+                token = None
+            if token:
+                if token.organization.pk == organization.pk:
+                    pass
+                else:
+                    token.delete()
+            token, created = CustomToken.objects.get_or_create(user=passed_user_email, organization=organization)
         else:
-            organization_to_auth = get_object_or_404(Organization.objects.all(), pk=organization_pk)
-            organization_users = [user.username for user in organization_to_auth.users.all()]
-            passed_user = serializer.validated_data['user']
-            user = get_object_or_404(User.objects.all(), username=passed_user.username)
-            if not user.is_active:
-                return Response({
-                    "status": "Failure",
-                    "detail": "User deleted"
-                }, status=status.HTTP_406_NOT_ACCEPTABLE)
-            if passed_user.username in organization_users:
-                try:
-                    token = CustomToken.objects.get(user=passed_user)
-                except CustomToken.DoesNotExist:
-                    token = None
-                if token:
-                    if token.organization.pk == organization_to_auth.pk:
-                        pass
-                    else:
-                        token.delete()
-                token, created = CustomToken.objects.get_or_create(user=passed_user, organization=organization_to_auth)
-            else:
-                return Response({
-                    "status": "Failure",
-                    "detail": f"User not in organization {organization_to_auth}"
-                }, status=status.HTTP_400_BAD_REQUEST)
-            return Response({'token': token.key})
+            return Response({
+                "status": "Failure",
+                "detail": f"User not in organization {organization}"
+            }, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'token': token.key})

@@ -1,14 +1,14 @@
 import binascii
 import os
 
+from django.contrib import auth
 from django.db import models
-from django.contrib.auth.models import User
 from django.utils.translation import ugettext_lazy as _
 
 
 class Organization(models.Model):
     title = models.CharField(max_length=250)
-    users = models.ManyToManyField(User)
+    users = models.ManyToManyField(auth.get_user_model())
 
     def __str__(self):
         return self.title
@@ -27,7 +27,7 @@ class TodoItem(models.Model):
 
 class CustomToken(models.Model):
     key = models.CharField(_("Key"), max_length=40)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(auth.get_user_model(), on_delete=models.CASCADE)
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
     created = models.DateTimeField(_("Created"), auto_now_add=True)
 

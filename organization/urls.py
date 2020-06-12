@@ -1,11 +1,11 @@
 from django.urls import path
-from .views import TodoViewList
-from .views import TodoViewDetail
-from .views import OrganizationViewList
-from .views import OrganizationViewDetail
-from .views import OrganizationTodoListView
-from .views import CustomAuthTokenView
 
+from .views import CustomAuthTokenView
+from .views import OrganizationTodoListView
+from .views import OrganizationViewDetail
+from .views import OrganizationViewList
+from .views import TodoViewDetail
+from .views import TodoViewList
 
 app_name = "organization"
 
