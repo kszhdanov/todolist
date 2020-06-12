@@ -4,6 +4,7 @@ from .views import TodoViewDetail
 from .views import OrganizationViewList
 from .views import OrganizationViewDetail
 from .views import OrganizationTodoListView
+from .views import CustomAuthTokenView
 
 
 app_name = "organization"
@@ -15,4 +16,5 @@ urlpatterns = [
     path('organizations/', OrganizationViewList.as_view()),
     path('organizations/<int:pk>', OrganizationViewDetail.as_view()),
     path('organizations/<int:pk>/todolist', OrganizationTodoListView.as_view()),
+    path('organizations/<int:pk>/api-token-auth', CustomAuthTokenView.as_view()),
 ]
