@@ -46,7 +46,7 @@ class TodoViewDetail(APIView):
         todo_item.delete()
         return Response({
             "status": "Success",
-            "detail": f"Todo item with id `{pk}` has been deleted."
+            "detail": f"Todo item with id '{pk}' has been deleted."
         }, status=204)
 
 
@@ -89,7 +89,7 @@ class OrganizationViewDetail(APIView):
         organization_saved.delete()
         return Response({
             "status": "Success",
-            "detail": "Organization with id `{}` has been deleted.".format(pk)
+            "detail": f"Organization with id '{pk}' has been deleted."
         }, status=204)
 
 
