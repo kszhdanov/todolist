@@ -147,56 +147,58 @@ class OrganizationTodoListView(APIView):
                 }, status.HTTP_406_NOT_ACCEPTABLE)
 
 
-class OrganizationTodoListViewDetail(APIView):
+class CheckOrganizationAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, pk, todo_pk):
-        organization = get_object_or_404(Organization.objects.all(), pk=pk)
+    def check_organization(self, request, organization_pk, todo_pk, success_func):
+        organization = get_object_or_404(Organization.objects.all(), pk=organization_pk)
         if request.auth.organization != organization:
             return Response({
                 "status": "Failure",
                 "detail": "Authorized in another organization"
             }, status=status.HTTP_401_UNAUTHORIZED)
         else:
-            todo_item = get_object_or_404(TodoItem.objects.all(), pk=todo_pk)
-            serializer = ToDoItemSerializer(todo_item, many=False)
-            return Response({"todo_item": serializer.data})
+            return success_func(request, todo_pk)
 
-    def put(self, request, pk, todo_pk):
-        organization = get_object_or_404(Organization.objects.all(), pk=pk)
-        if request.auth.organization != organization:
-            return Response({
-                "status": "Failure",
-                "detail": "Authorized in another organization"
-            }, status=status.HTTP_401_UNAUTHORIZED)
-        else:
-            todo_item = get_object_or_404(TodoItem.objects.all(), pk=todo_pk)
-            data = request.data.get('todo_item')
-            serializer = ToDoItemSerializer(instance=todo_item, data=data, partial=True)
-            if serializer.is_valid(raise_exception=True):
-                todo_item = serializer.save()
-            return Response({
-                "status": "Success",
-                "detail": f"Todo item '{todo_item.short_desc()}' updated successfully"
-            })
 
-    def delete(self, request, pk, todo_pk):
-        organization = get_object_or_404(Organization.objects.all(), pk=pk)
-        if request.auth.organization != organization:
-            return Response({
-                "status": "Failure",
-                "detail": "Authorized in another organization"
-            }, status=status.HTTP_401_UNAUTHORIZED)
-        else:
-            todo_item = get_object_or_404(TodoItem.objects.all(), pk=todo_pk)
-            todo_item.delete()
-            return Response({
-                "status": "Success",
-                "detail": f"Todo item with id '{todo_pk}' has been deleted."
-            }, status=204)
+class OrganizationTodoListViewDetail(CheckOrganizationAPIView):
+
+    def get_success(self, request, todo_pk):
+        todo_item = get_object_or_404(TodoItem.objects.all(), pk=todo_pk)
+        serializer = ToDoItemSerializer(todo_item, many=False)
+        return Response({"todo_item": serializer.data})
+
+    def put_success(self, request, todo_pk):
+        todo_item = get_object_or_404(TodoItem.objects.all(), pk=todo_pk)
+        data = request.data.get('todo_item')
+        serializer = ToDoItemSerializer(instance=todo_item, data=data, partial=True)
+        if serializer.is_valid(raise_exception=True):
+            todo_item = serializer.save()
+        return Response({
+            "status": "Success",
+            "detail": f"Todo item '{todo_item.short_desc()}' updated successfully"
+        })
+
+    def delete_success(self, request, todo_pk):
+        todo_item = get_object_or_404(TodoItem.objects.all(), pk=todo_pk)
+        todo_item.delete()
+        return Response({
+            "status": "Success",
+            "detail": f"Todo item with id '{todo_pk}' has been deleted."
+        }, status=204)
+
+    def get(self, request, organization_pk, todo_pk):
+        return self.check_organization(request, organization_pk, todo_pk, self.get_success)
+
+    def put(self, request, organization_pk, todo_pk):
+        return self.check_organization(request, organization_pk, todo_pk, self.put_success)
+
+    def delete(self, request, organization_pk, todo_pk):
+        return self.check_organization(request, organization_pk, todo_pk, self.delete_success)
 
 
 class CustomAuthTokenView(ObtainAuthToken):
+
     def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
